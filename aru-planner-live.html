@@ -1,0 +1,376 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ARU Planner</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* Flow: 1 address and real lot, 2 your values or auto values, 3 ARU design in 3D */
+:root{--bg:#f4f5f2;--fg:#1c2421;--card:#ffffff;--mut:#5f6b66;--bd:#d6dad4;--ac:#1d6b57;--wa:#9a5b00;--no:#b83a2e;--plot:#e9efe9;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121715;--fg:#e6ebe8;--card:#1b221f;--mut:#9aa6a0;--bd:#303a35;--ac:#4cc4a0;--wa:#e2a54c;--no:#ff7f70;--plot:#16201c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121715;--fg:#e6ebe8;--card:#1b221f;--mut:#9aa6a0;--bd:#303a35;--ac:#4cc4a0;--wa:#e2a54c;--no:#ff7f70;--plot:#16201c;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-inline:16px;padding-block:16px 32px}
+.wrap{max-width:1150px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+.sub{color:var(--mut);margin:0 0 14px;max-width:66ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+@media(min-width:900px){.grid{grid-template-columns:minmax(0,350px) minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 78px 84px;gap:8px;align-items:center;margin:6px 0}
+.row.nu{grid-template-columns:minmax(0,1fr) 78px}
+.row.sel{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+.row label{font-size:14px}
+.row .u{font-size:12px;color:var(--mut);display:flex;gap:4px;align-items:center;white-space:nowrap}
+input[type=number],input[type=text],select{width:100%;min-height:40px;padding:6px 8px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--fg);font:inherit}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--ac)}
+button{min-height:42px;padding:8px 14px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button.on{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}
+button.p{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}
+button.w{width:100%;margin-top:6px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.addr{display:flex;gap:6px}.addr input{flex:1}
+#map{height:380px;border-radius:8px}
+#v3{width:100%;height:min(62vh,440px);border-radius:8px;background:var(--plot);overflow:hidden;position:relative;touch-action:none}
+#v3 canvas{display:block;width:100%;height:100%}
+#v3msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;color:var(--mut)}
+canvas.c2{width:100%;height:min(60vh,400px);display:block;border-radius:8px;background:var(--plot);touch-action:none}
+canvas.fp{width:100%;height:270px;display:block;border-radius:8px;background:var(--plot)}
+.hint{color:var(--mut);font-size:13px;margin:6px 0 0}
+#st{color:var(--mut);font-size:13px;margin:8px 0 0;min-height:20px;overflow-wrap:anywhere}
+.verdict{font-size:19px;font-weight:700;margin:0 0 4px}
+.opt{border-left:4px solid var(--bd);padding:6px 10px;margin:10px 0;background:var(--bg);border-radius:0 6px 6px 0}
+.opt b{margin-right:6px}
+.tag{font-size:11px;font-weight:700;padding:1px 8px;border-radius:9px;border:1px solid currentColor;white-space:nowrap}
+.ok{color:var(--ac)}.chk{color:var(--wa)}.no{color:var(--no)}
+.opt.ok{border-left-color:var(--ac)}.opt.chk{border-left-color:var(--wa)}.opt.no{border-left-color:var(--no)}
+.opt div{color:var(--fg);overflow-wrap:anywhere}
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+.specs div{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.specs span{display:block;font-size:12px;color:var(--mut)}.specs b{font-size:16px;font-variant-numeric:tabular-nums}
+ul{margin:4px 0 0 18px;padding:0}
+.mut{color:var(--mut);font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}td{border-top:1px solid var(--bd);padding:3px 6px;vertical-align:top;overflow-wrap:anywhere}td:first-child{color:var(--mut);width:42%}
+details{margin-top:8px}summary{cursor:pointer;font-size:13px}
+a{color:var(--ac)}
+</style></head><body><div class="wrap">
+<h1>ARU Planner</h1>
+<p class="sub">Search a Mississauga address to pull up the real lot, zoning and house. Then design an Additional Residential Unit in 3D from your own values, or let it use typical values for anything you don’t know.</p>
+<div class="grid"><div>
+<div class="card"><h2>1 · Find the address</h2>
+<div class="addr"><input type="text" id="addr" placeholder="e.g. 300 City Centre Dr, Mississauga" aria-label="Address"><button class="p" id="go">Look up</button></div>
+<div class="hint">Or click any lot on the map. Use a street address, not a postal code.</div>
+<div id="st"></div></div>
+<div class="card"><h2>2 · Your values</h2><div id="fields"></div>
+<div class="row sel"><label for="hs">House storeys</label><select id="hs"><option value="1">1 storey</option><option value="2" selected>2 storeys</option></select></div>
+<div class="row sel"><label for="stor">ARU storeys</label><select id="stor"><option value="1">1 storey</option><option value="2">2 storeys</option></select></div>
+<div class="row sel"><label for="roof">ARU roof</label><select id="roof"><option value="gable">Gable</option><option value="shed">Shed (one slope)</option><option value="flat">Flat</option></select></div>
+<div class="row sel"><label for="bs">Basement?</label><select id="bs"><option>unknown</option><option>yes</option><option>no</option></select></div>
+<div class="row sel"><label for="gr">Garage?</label><select id="gr"><option>unknown</option><option>attached</option><option>detached</option><option>none</option></select></div>
+<div class="row nu"><label for="rear">Detached ARU behind house only</label><input type="checkbox" id="rear" checked></div>
+<button class="p w" id="bRun">3 · Design my ARU with these values</button>
+<button class="w" id="bAuto">Use typical values for everything</button>
+<details><summary>No address? Use a manual rectangle lot</summary><div id="manual"></div><button id="bRect" class="w">Use rectangle</button></details></div>
+</div><div>
+<div class="card"><h2>Map <span class="mut">(satellite, City parcels, City zoning)</span></h2><div id="map"></div></div>
+<div class="card" id="intro"><h2>The property</h2><p class="mut">Look up an address to begin.</p></div>
+<div class="card"><h2>3D model</h2><div id="v3"><div id="v3msg">Loading 3D…</div></div>
+<div class="bar" id="views"><button data-v="orbit" class="on">3/4 view</button><button data-v="street">From street</button><button data-v="top">From above</button></div>
+<div class="bar" id="optbar"></div>
+<p class="hint">Drag to rotate, scroll to zoom. Grey is the house, blue is the ARU, green is the buildable area.</p></div>
+<div class="card" id="out"><h2>ARU design</h2><p class="mut">Press “Design my ARU” once the lot is loaded.</p></div>
+<div class="card"><h2>ARU floor plan</h2><div class="bar" id="floors"></div><canvas class="fp" id="fp" aria-label="ARU floor plan"></canvas><p class="hint" id="fpn"></p></div>
+<div class="card"><h2>Lot plan <span class="mut">(street at bottom · drag the house if the footprint is off)</span></h2>
+<div class="bar"><button id="fPrev">◀ Street edge</button><button id="fNext">Street edge ▶</button></div><canvas class="c2" id="cv" aria-label="Lot plan"></canvas></div>
+</div></div>
+<p class="mut">Data: City of Mississauga Open Data (parcels, zoning by-law 0225-2007), OpenStreetMap (buildings, roads), Esri (imagery, address search). Concept and screening tool only. Not a zoning certificate or a drawing for permit. Rules are my reading of By-law 0174-2023 and Ontario Regulation 462/24, so confirm with the City. <a href="https://www7.mississauga.ca/Departments/PB/OfficialDocs/By-law0174-2023.pdf" target="_blank" rel="noopener">Read By-law 0174-2023</a></p>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const PARC='https://services6.arcgis.com/hM5ymMLbxIyWTjn2/ArcGIS/rest/services/Parcel/FeatureServer';
+const PSRCH='https://services6.arcgis.com/hM5ymMLbxIyWTjn2/ArcGIS/rest/services/Property_Search/FeatureServer';
+const ZONE='https://services6.arcgis.com/hM5ymMLbxIyWTjn2/ArcGIS/rest/services/2022_Zoning/FeatureServer';
+let lastAddr='',STEP=.5;
+const F=[['sf','Front yard rule',6,'m'],['ss','Side yard rule (main house)',1.2,'m'],['sr','Rear yard rule (main house)',7.5,'m'],
+['sep','Gap, ARU to house',4,'m'],['cov','Max lot coverage with ARU',45,'%'],['maxfa','Max detached ARU area',100,'m²'],['mh','Max ARU height',6,'m'],
+['aw','ARU width',6,'m'],['ad','ARU depth',7,'m'],['hw','House width (if no footprint found)',10,'m'],['hd','House depth (if no footprint found)',9,'m'],['bh','Basement ceiling height',2.0,'m']];
+$('fields').innerHTML=F.map(f=>`<div class="row"><label for="${f[0]}">${f[1]}</label><input type="number" inputmode="decimal" id="${f[0]}" value="${f[2]}" step="0.1" min="0"><span class="u"><input type="checkbox" id="u_${f[0]}" aria-label="${f[1]} unknown"> unknown</span></div>`).join('');
+$('manual').innerHTML='<div class="row nu"><label for="lw">Lot width</label><input type="number" id="lw" value="15"></div><div class="row nu"><label for="ld">Lot depth</label><input type="number" id="ld" value="35"></div>';
+const V=()=>{const v={},as=[];F.forEach(f=>{const u=$('u_'+f[0]).checked,x=parseFloat($(f[0]).value);v[f[0]]=u||!(x>0)?f[2]:x;if(u)as.push(f[1]+' assumed '+f[2]+' '+f[3])});return[v,as]};
+const st=t=>{$('st').textContent=t};
+/* ---------- geometry ---------- */
+let O={lat:43.6,lon:-79.6,kx:1e5,ky:1e5},FR={phi:0,s:[0,0]},ring=[],bld=[],roads=[],frontI=0,geo=null;
+let lot=[],house={x:0,y:0,w:10,h:9},obst=[],bP=[],bArea=0,assumedHouse=false,types=[],res=null,REQ,NRM=[0,-1],MD=1,BB=[0,0,1,1],HB=0,roadsP=[],opts=[],sel=0,floor=0,lastV=null;
+const P=(la,lo)=>[(lo-O.lon)*O.kx,-(la-O.lat)*O.ky],Pi=p=>[O.lat-p[1]/O.ky,O.lon+p[0]/O.kx];
+const rot=(p,a)=>[p[0]*Math.cos(a)-p[1]*Math.sin(a),p[0]*Math.sin(a)+p[1]*Math.cos(a)];
+const toPlan=p=>{const r=rot(p,FR.phi);return[r[0]+FR.s[0],r[1]+FR.s[1]]};
+const fromPlan=q=>rot([q[0]-FR.s[0],q[1]-FR.s[1]],-FR.phi);
+function area(Q){let a=0;for(let i=0;i<Q.length;i++){const p=Q[i],q=Q[(i+1)%Q.length];a+=p[0]*q[1]-q[0]*p[1]}return Math.abs(a)/2}
+function pip(p,Q){let c=false;for(let i=0,j=Q.length-1;i<Q.length;j=i++){const a=Q[i],b=Q[j];if((a[1]>p[1])!=(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+function dseg(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1];let t=((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1);t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
+const cen=Q=>Q.reduce((s,p)=>[s[0]+p[0]/Q.length,s[1]+p[1]/Q.length],[0,0]);
+const aabb=Q=>{const x=Q.map(p=>p[0]),y=Q.map(p=>p[1]);return{x:Math.min(...x),y:Math.min(...y),w:Math.max(...x)-Math.min(...x),h:Math.max(...y)-Math.min(...y)}};
+function clean(Q){const o=[];Q.forEach(p=>{if(!o.length||Math.hypot(p[0]-o[o.length-1][0],p[1]-o[o.length-1][1])>.05)o.push(p)});if(o.length>1&&Math.hypot(o[0][0]-o[o.length-1][0],o[0][1]-o[o.length-1][1])<.05)o.pop();return o}
+function setFront(i){const n=ring.length;i=((i%n)+n)%n;frontI=i;
+ let order=[...Array(n)].map((_,k)=>ring[(i+k)%n]),A=order[0],B=order[1],phi=-Math.atan2(B[1]-A[1],B[0]-A[0]);
+ if(rot(cen(order),phi)[1]>rot(A,phi)[1]){order=[ring[(i+1)%n],ring[i]];for(let k=1;k<n-1;k++)order.push(ring[(i-k+n*2)%n]);A=order[0];B=order[1];phi=-Math.atan2(B[1]-A[1],B[0]-A[0])}
+ const R=order.map(p=>rot(p,phi));FR={phi,s:[3-Math.min(...R.map(p=>p[0])),3-Math.min(...R.map(p=>p[1]))]};
+ lot=order.map(toPlan);roadsP=roads.map(r=>r.map(toPlan));bP=bld.map(b=>b.map(toPlan));
+ const inl=bP.filter(b=>b.length>2&&pip(cen(b),lot)&&area(b)>=4).sort((a,b)=>area(b)-area(a));
+ bArea=inl.reduce((s,b)=>s+area(b),0);obst=inl.slice(1).map(aabb);res=null;opts=[];lastV=null;
+ if(inl.length){house=aabb(inl[0]);assumedHouse=false}else{const c=cen(lot),[v]=V();house={x:c[0]-v.hw/2,y:c[1]-v.hd/2,w:v.hw,h:v.hd};assumedHouse=true;bArea=0}
+ draw()}
+/* ---------- engine ---------- */
+const depth=p=>NRM[0]*(p[0]-lot[0][0])+NRM[1]*(p[1]-lot[0][1]);
+function prep(){const n=lot.length,f=lot[1][0]-lot[0][0],g=lot[1][1]-lot[0][1],L=Math.hypot(f,g)||1,c=cen(lot);
+ NRM=[-g/L,f/L];if(NRM[0]*(c[0]-lot[0][0])+NRM[1]*(c[1]-lot[0][1])<0)NRM=[-NRM[0],-NRM[1]];
+ MD=Math.max(...lot.map(depth))||1;const xs=lot.map(p=>p[0]),ys=lot.map(p=>p[1]);BB=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+ types=Array(n).fill('side');types[0]='front';
+ for(let i=1;i<n;i++){const a=lot[i],b=lot[(i+1)%n],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1,m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  if(Math.abs((dx*f+dy*g)/(l*L))>.85&&depth(m)>.6*MD)types[i]='rear';
+  else{let d=1e9;roadsP.forEach(r=>{for(let k=0;k+1<r.length;k++)d=Math.min(d,dseg(m,r[k],r[k+1]))});if(d<12&&l>3)types[i]='ext'}}
+ HB=Math.max(...[[house.x,house.y],[house.x+house.w,house.y],[house.x,house.y+house.h],[house.x+house.w,house.y+house.h]].map(depth))}
+const okPt=p=>{if(!pip(p,lot))return false;for(let i=0;i<lot.length;i++)if(dseg(p,lot[i],lot[(i+1)%lot.length])<REQ[types[i]])return false;return true};
+function rpts(x,y,w,h){const o=[],nx=Math.max(1,Math.ceil(w/.5)),ny=Math.max(1,Math.ceil(h/.5));for(let i=0;i<=nx;i++)for(let j=0;j<=ny;j++)if(i==0||j==0||i==nx||j==ny||(i==nx>>1&&j==ny>>1))o.push([x+w*i/nx,y+h*j/ny]);return o}
+const rd=(p,r)=>Math.hypot(Math.max(r.x-p[0],0,p[0]-r.x-r.w),Math.max(r.y-p[1],0,p[1]-r.y-r.h));
+const rgap=(a,b)=>Math.hypot(Math.max(a.x-b.x-b.w,b.x-a.x-a.w,0),Math.max(a.y-b.y-b.h,b.y-a.y-a.h,0));
+const ov=(a,b)=>a.x<b.x+b.w-1e-6&&a.x+a.w>b.x+1e-6&&a.y<b.y+b.h-1e-6&&a.y+a.h>b.y+1e-6;
+const fits=(r,rear)=>{for(const p of rpts(r.x,r.y,r.w,r.h)){if(!okPt(p))return false;if(rear&&depth(p)<HB-.01)return false}return true};
+function score(r){const c=[r.x+r.w/2,r.y+r.h/2];let m=1e9;for(let i=0;i<lot.length;i++)m=Math.min(m,dseg(c,lot[i],lot[(i+1)%lot.length]));return .5*Math.min(depth(c)/MD,1)+.25*Math.min(m/5,1)+.25*Math.min(rgap(r,house),8)/8}
+function search(w,d,att,rear,sep){const out=[];for(const[W,D]of[[w,d],[d,w]]){const c=[];
+ if(!att){for(let x=BB[0];x<=BB[2]-W;x+=STEP)for(let y=BB[1];y<=BB[3]-D;y+=STEP)c.push({x,y,w:W,h:D})}
+ else{for(let y=house.y-D+.5;y<house.y+house.h;y+=.5){c.push({x:house.x+house.w,y,w:W,h:D});c.push({x:house.x-W,y,w:W,h:D})}
+  for(let x=house.x-W+.5;x<house.x+house.w;x+=.5){c.push({x,y:house.y+house.h,w:W,h:D});c.push({x,y:house.y-D,w:W,h:D})}}
+ for(const r of c){if(ov(r,house)||obst.some(o=>ov(r,o)||rgap(r,o)<.6))continue;const g=rgap(r,house);if(!att&&g<sep-1e-6)continue;if(att&&g>.01)continue;
+  if(!fits(r,false))continue;if(!att&&rear&&!fits(r,true))continue;r.score=score(r);out.push(r)}}
+ return out.sort((a,b)=>b.score-a.score)}
+function pathOK(r){const g=Math.max(.3,STEP*.6),B=BB,nx=Math.ceil((B[2]-B[0])/g),ny=Math.ceil((B[3]-B[1])/g),blk=new Uint8Array(nx*ny),OB=[house,...obst,r];
+ for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const p=[B[0]+i*g,B[1]+j*g];let b=!pip(p,lot)||OB.some(o=>rd(p,o)<.45);if(!b)for(let e=0;e<lot.length;e++)if(dseg(p,lot[e],lot[(e+1)%lot.length])<.45){b=true;break}blk[i*ny+j]=b?1:0}
+ const q=[],seen=new Uint8Array(nx*ny);for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const p=[B[0]+i*g,B[1]+j*g];if(!blk[i*ny+j]&&dseg(p,lot[0],lot[1])<1.2){q.push([i,j]);seen[i*ny+j]=1}}
+ while(q.length){const[i,j]=q.pop(),p=[B[0]+i*g,B[1]+j*g];if(rd(p,r)<1.3)return true;for(const[a,b]of[[1,0],[-1,0],[0,1],[0,-1]]){const x=i+a,y=j+b;if(x>=0&&y>=0&&x<nx&&y<ny&&!blk[x*ny+y]&&!seen[x*ny+y]){seen[x*ny+y]=1;q.push([x,y])}}}return false}
+function pick(l,n){const o=[];for(const r of l){if(o.every(q=>Math.hypot(q.x+q.w/2-r.x-r.w/2,q.y+q.h/2-r.y-r.h/2)>=4))o.push(r);if(o.length>=n)break}return o}
+const AUTO=[[8,12],[8,10],[7,10],[7,9],[7,8],[6,8],[6,7],[5,7],[5,6],[4,6],[3.5,5]];
+function zoneInfo(z){if(!z)return{k:'chk',t:'Zoning not found for this point. Check the City zoning map.',w:[]};
+ const c=(z.ZONE_CODE||'').toUpperCase(),b=c.split('-')[0],d=(z.ZONE_DESCRIPTION||'').toLowerCase();let k='chk',t='';
+ if(/^R\d+$/.test(b)||b=='RL'||b=='RM7'||/detached/.test(d)&&!/apartment/.test(d)){k='ok';t='Residential zone for detached or semi-detached homes. ARUs are permitted as of right (up to 3 units per lot).'}
+ else if(/^RM\d+$/.test(b)){k='chk';t='Townhouse or multi-unit zone. An ARU inside the home may be fine, but a detached one often is not workable. Confirm with the City.'}
+ else if(/^RA\d/.test(b)){k='no';t='Apartment zone. ARU permissions apply to detached, semi-detached and townhouse homes.'}
+ else if(/^(C|E|O|OS|G|D|U|I|A|B|H|CC|PB)/.test(b)){k='no';t='Not a residential zone. ARUs are unlikely to apply.'}
+ else t='Zone type not recognised. Read the zoning by-law for this zone.';
+ const w=[];if(/-\d+/.test(c))w.push('Site-specific exception zone ('+c+'). Its own rules may override the standard ones.');if(z.GREENLANDS_OVERLAY=='Y')w.push('Greenlands overlay applies. Expect Credit Valley or TRCA conservation review.');
+ return{k,t,w}}
+/* ---------- ARU design ---------- */
+const WALL=2.7;
+function dims(r,storeys,roof){const span=Math.min(r.w,r.h),wall=WALL*storeys,rise=roof=='gable'?span*.5*.45:roof=='shed'?span*.22:.25;return{wall,rise,ridge:wall+rise,span}}
+function program(r,storeys){const A=r.w*r.h*.9,fl=[],bath=4.5,B=[12,10.5,10];
+ const beds=(n,list)=>{for(let i=0;i<n;i++)list.push({n:n>1?'Bedroom '+(i+1):'Bedroom',a:B[i]})};
+ if(storeys==1){const rooms=[];
+  if(A<28){rooms.push({n:'Living / kitchen / sleeping',a:A-bath},{n:'Bath',a:bath})}
+  else{const nb=A<48?1:A<75?2:3,bt=nb==3?2:1,bsum=B.slice(0,nb).reduce((s,x)=>s+x,0),liv=A-bt*bath-bsum;
+   if(liv>38){rooms.push({n:'Kitchen / dining',a:liv*.45},{n:'Living',a:liv*.55})}else rooms.push({n:'Living / kitchen',a:liv});
+   beds(nb,rooms);rooms.push({n:'Bath',a:bath});if(bt>1)rooms.push({n:'Bath 2',a:bath})}
+  fl.push({label:'Floor plan',rooms})}
+ else{const g=[];if(A>60){g.push({n:'Kitchen / dining',a:(A-bath)*.45},{n:'Living',a:(A-bath)*.55})}else g.push({n:'Living / kitchen',a:A-bath});g.push({n:'Bath',a:bath});fl.push({label:'Ground floor',rooms:g});
+  const nb=A<30?1:A<50?2:3,bsum=B.slice(0,nb).reduce((s,x)=>s+x,0),rest=A-bath-bsum,u=[];beds(nb,u);u.push({n:'Bath',a:bath});if(rest>25){u.push({n:'Family room',a:rest*.6},{n:'Study',a:rest*.4})}else if(rest>8)u.push({n:'Study / flex',a:rest});
+  fl.push({label:'Upper floor',rooms:u})}
+ return fl}
+function lay(rooms,x,y,w,h,horiz,out){if(rooms.length==1){out.push(Object.assign({},rooms[0],{x,y,w,h}));return}
+ const tot=rooms.reduce((s,r)=>s+r.a,0),f=rooms[0].a/tot;
+ if(horiz){const cw=w*f;out.push(Object.assign({},rooms[0],{x,y,w:cw,h}));lay(rooms.slice(1),x+cw,y,w-cw,h,false,out)}
+ else{const ch=h*f;out.push(Object.assign({},rooms[0],{x,y,w,h:ch}));lay(rooms.slice(1),x,y+ch,w,h-ch,true,out)}}
+function doorFace(r){const c=[r.x+r.w/2,r.y+r.h/2],hc=[house.x+house.w/2,house.y+house.h/2],dx=hc[0]-c[0],dy=hc[1]-c[1];
+ if(r.att)return dy>0?'s':'n';return Math.abs(dx)*r.h>Math.abs(dy)*r.w?(dx>0?'e':'w'):(dy>0?'s':'n')}
+const cs=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function drawPlan(){const c=$('fp'),x=c.getContext('2d'),d=devicePixelRatio||1;c.width=c.clientWidth*d;c.height=c.clientHeight*d;x.setTransform(d,0,0,d,0,0);
+ const o=opts[sel];if(!o||!lastV){x.fillStyle=cs('--mut');x.font='13px system-ui,sans-serif';x.fillText('Design the ARU to see a floor plan.',12,24);$('fpn').textContent='';return}
+ const fls=program(o,lastV.storeys),fl=fls[Math.min(floor,fls.length-1)],W=c.clientWidth,H=c.clientHeight,m=26,s=Math.min((W-2*m)/o.w,(H-2*m)/o.h),ox=(W-o.w*s)/2,oy=(H-o.h*s)/2;
+ const fg=cs('--fg'),mu=cs('--mut'),ac=cs('--ac'),rooms=[];lay(fl.rooms,0,0,o.w,o.h,o.w>=o.h,rooms);
+ x.lineWidth=1;x.strokeStyle=mu;rooms.forEach((r,i)=>{x.fillStyle=i%2?ac+'1c':ac+'33';x.fillRect(ox+r.x*s,oy+r.y*s,r.w*s,r.h*s);x.strokeRect(ox+r.x*s,oy+r.y*s,r.w*s,r.h*s);
+  x.fillStyle=fg;x.font='bold 11px system-ui,sans-serif';const t=r.n,a=(r.w*r.h*.92).toFixed(1)+' m²';x.textAlign='center';
+  if(r.w*s>70){x.fillText(t,ox+(r.x+r.w/2)*s,oy+(r.y+r.h/2)*s-2);x.font='11px system-ui,sans-serif';x.fillStyle=mu;x.fillText(a,ox+(r.x+r.w/2)*s,oy+(r.y+r.h/2)*s+12)}else{x.fillText(t.split(' ')[0],ox+(r.x+r.w/2)*s,oy+(r.y+r.h/2)*s+4)}x.textAlign='left'});
+ x.lineWidth=3;x.strokeStyle=fg;x.strokeRect(ox,oy,o.w*s,o.h*s);
+ const f=doorFace(o),dw=.9*s;x.strokeStyle='#d35400';x.lineWidth=4;x.beginPath();
+ if(f=='n'){x.moveTo(ox+o.w*s/2-dw/2,oy);x.lineTo(ox+o.w*s/2+dw/2,oy)}else if(f=='s'){x.moveTo(ox+o.w*s/2-dw/2,oy+o.h*s);x.lineTo(ox+o.w*s/2+dw/2,oy+o.h*s)}else if(f=='w'){x.moveTo(ox,oy+o.h*s/2-dw/2);x.lineTo(ox,oy+o.h*s/2+dw/2)}else{x.moveTo(ox+o.w*s,oy+o.h*s/2-dw/2);x.lineTo(ox+o.w*s,oy+o.h*s/2+dw/2)}x.stroke();
+ x.fillStyle=mu;x.font='11px system-ui,sans-serif';x.fillText(o.w+' m',ox+o.w*s/2-12,oy-8);x.save();x.translate(ox-8,oy+o.h*s/2+12);x.rotate(-Math.PI/2);x.fillText(o.h+' m',0,0);x.restore();
+ $('fpn').textContent='Orange mark is the front door. Room sizes are net of walls and approximate. This is a concept layout.'}
+/* ---------- run ---------- */
+async function run(){if(lot.length<3){st('Look up an address first.');return}
+ const[v,as]=V(),s1=$('stor').value=='1',storeys=s1?1:2,roof=$('roof').value;
+ const REQd={front:v.sf,side:s1?.6:1.8,rear:1.8,ext:s1?2.5:4.5},REQa={front:v.sf,side:v.ss,rear:v.sr,ext:Math.max(4.5,v.ss)};
+ prep();if(assumedHouse){house.w=v.hw;house.h=v.hd;prep()}STEP=Math.max(.5,Math.round(Math.sqrt((BB[2]-BB[0])*(BB[3]-BB[1]))/6)/10);st('Designing the ARU ('+area(lot).toFixed(0)+' m² lot)…');await new Promise(r=>setTimeout(r,30));
+ const la=area(lot),bA=bArea||house.w*house.h,head=Math.max(0,v.cov/100*la-bA),auto=$('u_aw').checked||$('u_ad').checked;
+ if(la>3000)as.push('This parcel is '+la.toFixed(0)+' m², far bigger than a house lot (plaza, school or condo block?). Click your own lot on the map.');
+ if(auto)as.push('ARU size auto-picked (largest that fits)');if(assumedHouse)as.push('No building footprint found. House assumed '+house.w+'×'+house.h+' m. Drag it on the lot plan to the right spot.');
+ as.push('Detached ARU setbacks follow my reading of By-law 0174-2023 for '+(s1?'1':'2')+' storey: side '+REQd.side+' m, rear '+REQd.rear+' m, street-facing side '+REQd.ext+' m. Confirm.');
+ as.push('Max ARU height '+v.mh+' m'+($('u_mh').checked?' is a placeholder':'')+'. Confirm the limit for your zone.');
+ const sizes=auto?AUTO.filter(s=>s[0]*s[1]<=Math.min(v.maxfa,head)):[[v.aw,v.ad]];
+ let det=[],ds=null,att=[];
+ REQ=REQd;for(const s of sizes){const l=search(s[0],s[1],false,$('rear').checked,v.sep);if(l.length){det=pick(l,3);ds=s;break}}
+ REQ=REQa;for(const s of sizes){const l=search(s[0],s[1],true,false,0);if(l.length){att=pick(l,1);break}}
+ st('Checking access paths…');await new Promise(r=>setTimeout(r,30));
+ det.forEach(r=>{r.path=pathOK(r)});att.forEach(r=>{r.path=pathOK(r);r.att=true});
+ REQ=REQd;const env=[];for(let x=BB[0];x<=BB[2];x+=STEP)for(let y=BB[1];y<=BB[3];y+=STEP)if(okPt([x,y])&&![house,...obst].some(o=>rd([x,y],o)<=0))env.push([x,y]);
+ res={det,att,env};opts=det.concat(att);sel=0;floor=0;
+ const z=zoneInfo(geo&&geo.z?geo.z.properties:null),bs=$('bs').value,gr=$('gr').value,bh=v.bh;
+ const cov=r=>((bA+r.w*r.h)/la*100),dsc=r=>`${r.w}×${r.h} m (${(r.w*r.h).toFixed(0)} m²), ${rgap(r,house).toFixed(1)} m from the house, lot coverage ${cov(r).toFixed(0)}% (limit ${v.cov}%), side-yard path ${r.path?'clear (0.9 m or more)':'<b>blocked or too narrow</b>'}`;
+ const cards=[];
+ cards.push(['Basement suite',bs=='no'?'no':bs=='yes'&&bh>=1.95?'ok':'chk',bs=='no'?'No basement reported.':bs=='unknown'?'Unknown. Confirm a basement, a separate entrance and an egress window.':bh>=1.95?`Ceiling ${bh} m meets about 1.95 m. Usually the cheapest route, and it needs no yard space.`:`Ceiling ${bh} m is under about 1.95 m. It would need underpinning.`]);
+ cards.push(['Garage conversion',gr=='none'?'no':gr=='unknown'?'chk':'ok',gr=='none'?'No garage.':gr=='unknown'?'Unknown. A garage can sometimes convert. On-site parking rules still apply.':`A ${gr} garage can convert. Check parking and fire separation.`]);
+ cards.push(['Attached addition',att.length?(att[0].path?'ok':'chk'):'no',att.length?'Best spot: '+dsc(att[0]):'No position beside the house fits inside the main-house setbacks.']);
+ cards.push(['Detached garden suite',det.length?(det[0].path?'ok':'chk'):'no',det.length?'Top spot: '+dsc(det[0])+(det.length>1?`. ${det.length-1} other spot(s) in the model.`:''):'Nothing fits with the current setbacks, the '+v.sep+' m gap, '+head.toFixed(0)+' m² of coverage room and the rear-yard rule.']);
+ const good=cards.some(c=>c[1]=='ok'),vk=z.k=='no'?'no':z.k=='ok'?(good?'ok':'chk'):'chk',vt={ok:'Looks possible',chk:'Possible, needs checking',no:'Unlikely at this address'}[vk];
+ lastV={v,storeys,roof,cards,as,z,vk,vt,la,ha:bA,head,ds};
+ renderOut();draw();mapOverlay();scene3d();optBar();drawPlan();st('Done.')}
+function renderOut(){if(!lastV)return;const{v,storeys,roof,cards,as,z,vk,vt,la,ha,head,ds}=lastV,o=opts[sel],lab={ok:'Feasible',chk:'Check',no:'Not feasible'};let spec='';
+ if(o){const dm=dims(o,storeys,roof),gfa=o.w*o.h*storeys*.9,fls=program(o,storeys),beds=fls.reduce((s,f)=>s+f.rooms.filter(r=>/Bedroom/.test(r.n)).length,0),over=dm.ridge>v.mh+1e-6;
+  spec=`<div class="specs"><div><span>Footprint</span><b>${o.w} × ${o.h} m</b></div><div><span>Floor area</span><b>${gfa.toFixed(0)} m²</b></div><div><span>Storeys</span><b>${storeys}</b></div><div><span>Height to top</span><b>${dm.ridge.toFixed(1)} m</b></div><div><span>Bedrooms</span><b>${beds||'Studio'}</b></div><div><span>Door faces</span><b>${{n:'the rear',s:'the street side',e:'the right',w:'the left'}[doorFace(o)]}</b></div></div>`+
+  (over?`<div class="opt no"><b>Height</b><span class="tag no">Over</span><div>The model is ${dm.ridge.toFixed(1)} m tall, over your ${v.mh} m limit. Choose 1 storey or a flat roof.</div></div>`:'')}
+ $('out').innerHTML=`<h2>ARU design</h2><p class="verdict ${vk}">${vt}</p><div class="mut">Lot ${la.toFixed(0)} m² · buildings ${ha.toFixed(0)} m² · coverage room left ${head.toFixed(0)} m²${ds?' · size used '+ds[0]+'×'+ds[1]+' m':''}</div>${spec}`+
+ cards.map(c=>`<div class="opt ${c[1]}"><b>${c[0]}</b><span class="tag ${c[1]}">${lab[c[1]]}</span><div>${c[2]}</div></div>`).join('')+
+ `<div class="opt"><b>Assumptions</b><ul>${as.map(a=>'<li>'+a+'</li>').join('')}</ul></div><p class="mut">Still verify: water and sewer servicing, conservation authority, floodplain, tree protection, parking. Ontario sets a 4 m gap and 45% coverage minimum for ARU lots (O. Reg. 462/24).</p>`}
+function renderIntro(){const z=zoneInfo(geo&&geo.z?geo.z.properties:null),p=geo?geo.f.properties:{},la=area(lot),lab={ok:'Feasible',chk:'Check',no:'Not feasible'};
+ const addr=Object.keys(p).filter(k=>/addr/i.test(k)&&p[k]).map(k=>p[k])[0]||lastAddr,zc=geo&&geo.z?geo.z.properties:null;
+ const skip=/^(OBJECTID|Shape|GlobalID|created|last_edited|FID)/i,rows=Object.keys(p).filter(k=>p[k]!==null&&p[k]!==''&&!skip.test(k)).map(k=>`<tr><td>${k}</td><td>${p[k]}</td></tr>`).join('');
+ const her=Object.keys(p).some(k=>/heritage/i.test(k)&&p[k]&&!/^(no|none|n|0|n\/a)$/i.test(String(p[k])));
+ $('intro').innerHTML=`<h2>The property</h2><div class="verdict">${addr||'Selected lot'}</div><div class="mut">Lot ${la.toFixed(0)} m² · house ${assumedHouse?'<b>not found, assumed '+house.w+'×'+house.h+' m</b>':(house.w*house.h).toFixed(0)+' m² footprint'}${la>3000?' · <b>very large parcel, check it is your lot</b>':''}</div>
+ <div class="opt ${z.k}"><b>Zoning ${zc?zc.ZONE_CODE||'':''}</b><span class="tag ${z.k}">${lab[z.k]}</span><div>${zc?(zc.ZONE_DESCRIPTION||'')+'. ':''}${z.t}</div>${(z.w||[]).map(w=>'<div class="chk">⚠ '+w+'</div>').join('')}${her?'<div class="chk">⚠ Heritage flag on the property record. Heritage approval may apply.</div>':''}</div>
+ <p class="mut">Check the lot outline and street edge on the lot plan below. Then press <b>Design my ARU</b>.</p>${rows?`<details><summary>City property record</summary><table>${rows}</table></details>`:''}`}
+function optBar(){const b=$('optbar');b.innerHTML='';opts.forEach((o,i)=>{const e=document.createElement('button');e.textContent=o.att?'Attached option':'Option '+(i+1);if(i==sel)e.className='on';e.onclick=()=>{sel=i;floor=0;optBar();renderOut();scene3d();drawPlan()};b.appendChild(e)});
+ const fb=$('floors');fb.innerHTML='';if(opts[sel]&&lastV){const fls=program(opts[sel],lastV.storeys);if(fls.length>1)fls.forEach((f,i)=>{const e=document.createElement('button');e.textContent=f.label;if(i==floor)e.className='on';e.onclick=()=>{floor=i;optBar();drawPlan()};fb.appendChild(e)})}}
+/* ---------- 2D lot plan ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');let view={s:1,ox:0,oy:0},drag=null;
+const T=p=>[p[0]*view.s+view.ox,p[1]*view.s+view.oy],U=p=>[(p[0]-view.ox)/view.s,(p[1]-view.oy)/view.s];
+function draw(){const d=devicePixelRatio||1;cv.width=cv.clientWidth*d;cv.height=cv.clientHeight*d;ctx.setTransform(d,0,0,d,0,0);
+ if(lot.length<3)return;
+ const b=[Math.min(...lot.map(p=>p[0])),Math.min(...lot.map(p=>p[1])),Math.max(...lot.map(p=>p[0])),Math.max(...lot.map(p=>p[1]))],W=cv.clientWidth,H=cv.clientHeight,m=3,bw=b[2]-b[0]+2*m,bh=b[3]-b[1]+2*m,s=Math.min(W/bw,H/bh);
+ view={s,ox:(W-bw*s)/2-(b[0]-m)*s,oy:(H-bh*s)/2-(b[1]-m)*s};
+ const ac=cs('--ac'),fg=cs('--fg');
+ ctx.beginPath();lot.forEach((p,i)=>{const q=T(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])});ctx.closePath();ctx.fillStyle=ac+'22';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle=fg;ctx.stroke();
+ const a=T(lot[0]),c=T(lot[1]);ctx.strokeStyle='#d35400';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(c[0],c[1]);ctx.stroke();ctx.fillStyle='#d35400';ctx.font='bold 12px system-ui,sans-serif';ctx.fillText('STREET',(a[0]+c[0])/2-24,(a[1]+c[1])/2+18);
+ if(res){ctx.fillStyle=ac+'40';const w=STEP*view.s;res.env.forEach(p=>{const q=T(p);ctx.fillRect(q[0]-w/2,q[1]-w/2,w,w)})}
+ bP.forEach(bp=>{ctx.beginPath();bp.forEach((p,i)=>{const q=T(p);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])});ctx.closePath();ctx.fillStyle='#7f8c8d55';ctx.fill();ctx.strokeStyle='#7f8c8d';ctx.lineWidth=1;ctx.stroke()});
+ box(house,'#7f8c8d','House',true);obst.forEach(o=>box(o,'#95a5a6','',true));
+ if(res){res.att.forEach(r=>box(r,'#8e44ad','Attached'));const C=['#2980b9','#e67e22','#c0392b'];res.det.forEach((r,i)=>box(r,C[i],'ARU '+(i+1)))}}
+function box(r,c,l,o){const a=T([r.x,r.y]);if(!o){ctx.fillStyle=c+'aa';ctx.fillRect(a[0],a[1],r.w*view.s,r.h*view.s)}ctx.strokeStyle=c;ctx.lineWidth=2;ctx.strokeRect(a[0],a[1],r.w*view.s,r.h*view.s);if(l){ctx.fillStyle=o?c:'#fff';ctx.font='bold 11px system-ui,sans-serif';ctx.fillText(l,a[0]+4,a[1]+13)}}
+const pos=e=>{const b=cv.getBoundingClientRect();return U([e.clientX-b.left,e.clientY-b.top])};
+cv.addEventListener('pointerdown',e=>{const p=pos(e);if(p[0]>=house.x&&p[0]<=house.x+house.w&&p[1]>=house.y&&p[1]<=house.y+house.h){drag=[p[0]-house.x,p[1]-house.y];res=null;cv.setPointerCapture(e.pointerId)}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pos(e);house.x=p[0]-drag[0];house.y=p[1]-drag[1];draw()});
+cv.addEventListener('pointerup',()=>{if(drag){drag=null;if(lastV)run();else{scene3d();draw()}}});
+/* ---------- 3D ---------- */
+let R3=null;
+function init3d(){const host=$('v3'),msg=$('v3msg');if(!window.THREE||!THREE.OrbitControls){msg.textContent='The 3D viewer could not load. Check your connection and reload. Everything else still works.';return false}
+ try{const r=new THREE.WebGLRenderer({antialias:true});r.setPixelRatio(Math.min(devicePixelRatio||1,2));r.shadowMap.enabled=true;host.appendChild(r.domElement);msg.style.display='none';
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,1,.1,800),ctl=new THREE.OrbitControls(cam,r.domElement);ctl.enableDamping=true;ctl.maxPolarAngle=Math.PI/2.02;
+  scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a70,.85));const sun=new THREE.DirectionalLight(0xffffff,.8);sun.position.set(20,40,30);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);const sc=sun.shadow.camera;sc.left=-50;sc.right=50;sc.top=50;sc.bottom=-50;sc.far=200;scene.add(sun);
+  const group=new THREE.Group();scene.add(group);R3={r,scene,cam,ctl,group,host,sun};
+  const size=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};size();
+  if(window.ResizeObserver)new ResizeObserver(size).observe(host);else addEventListener('resize',size);
+  (function loop(){requestAnimationFrame(loop);ctl.update();r.render(scene,cam)})();return true}catch(e){msg.style.display='flex';msg.textContent='3D is not supported on this device ('+e.message+').';R3=null;return false}}
+const mat=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85,metalness:0},o||{}));
+function mbox(w,h,d,m,x,y,z,g){const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.castShadow=true;b.receiveShadow=true;g.add(b);return b}
+function roofMesh(kind,len,span,rise,m){let g;const ov=.35;
+ if(kind=='flat'){g=new THREE.BoxGeometry(len+ov*2,rise,span+ov*2);g.translate(0,rise/2,0)}
+ else{const s=new THREE.Shape(),hs=span/2+ov;if(kind=='gable'){s.moveTo(-hs,0);s.lineTo(hs,0);s.lineTo(0,rise)}else{s.moveTo(-hs,0);s.lineTo(hs,0);s.lineTo(hs,rise);s.lineTo(-hs,rise*.3)}s.closePath();
+  g=new THREE.ExtrudeGeometry(s,{depth:len+ov*2,bevelEnabled:false});g.rotateY(Math.PI/2);g.translate(-(len+ov*2)/2,0,0)}
+ const me=new THREE.Mesh(g,m);me.castShadow=true;me.receiveShadow=true;return me}
+function building(r,wall,rise,roofKind,m,roofM,g,doorF,withWin){const cx=r.x+r.w/2,cz=r.y+r.h/2;
+ mbox(r.w,wall,r.h,m,cx,wall/2,cz,g);
+ const along=r.w>=r.h,len=along?r.w:r.h,span=along?r.h:r.w,rf=roofMesh(roofKind,len,span,rise,roofM);rf.position.set(cx,wall,cz);if(!along)rf.rotation.y=Math.PI/2;g.add(rf);
+ if(withWin){const gm=mat(0x2c4a63,{roughness:.2,metalness:.2}),dm=mat(0x8a4b1f),storeys=Math.max(1,Math.round(wall/WALL));
+  const faces=[['n',r.w,cx,r.y,0],['s',r.w,cx,r.y+r.h,0],['w',r.h,r.x,cz,1],['e',r.h,r.x+r.w,cz,1]];
+  faces.forEach(f=>{const n=Math.max(1,Math.floor(f[1]/3));for(let s=0;s<storeys;s++)for(let i=0;i<n;i++){const off=((i+.5)/n-.5)*f[1],isDoor=f[0]==doorF&&s==0&&i==Math.floor((n-1)/2);
+    const px=f[4]?f[2]:f[2]+off,pz=f[4]?f[3]+off:f[3],w=isDoor?1:1.2,h=isDoor?2.05:1.2,y=isDoor?h/2:s*WALL+1.5;
+    mbox(f[4]?.12:w,h,f[4]?w:.12,isDoor?dm:gm,px,y,pz,g)}})}}
+function scene3d(){if(lot.length<3)return;if(!R3&&!init3d())return;const{group}=R3;try{
+ prep();while(group.children.length){const c=group.children.pop();c.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
+ const cx=(BB[0]+BB[2])/2,cz=(BB[1]+BB[3])/2,SZ=Math.max(BB[2]-BB[0],BB[3]-BB[1]),front=lot[0][1];
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(SZ+120,SZ+120),mat(0x5f7d5a));ground.rotation.x=-Math.PI/2;ground.position.set(cx,-.02,cz);ground.receiveShadow=true;group.add(ground);
+ const sh=new THREE.Shape();lot.forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));sh.closePath();
+ const lm=new THREE.Mesh(new THREE.ShapeGeometry(sh),new THREE.MeshStandardMaterial({color:0x86a77c,roughness:.9,side:THREE.DoubleSide}));lm.rotation.x=Math.PI/2;lm.position.y=0;lm.receiveShadow=true;group.add(lm);
+ const rm=mat(0x3b3f42);let nr=0;
+ const strip=(x1,z1,x2,z2,w)=>{const l=Math.hypot(x2-x1,z2-z1);if(l<.1)return;const m=new THREE.Mesh(new THREE.PlaneGeometry(l,w),rm);m.rotation.x=-Math.PI/2;m.rotation.z=-Math.atan2(z2-z1,x2-x1);m.position.set((x1+x2)/2,.01,(z1+z2)/2);group.add(m);nr++};
+ roadsP.forEach(rr=>{for(let k=0;k+1<rr.length;k++){const a=rr[k],b=rr[k+1];if(Math.min(a[0],b[0])>BB[2]+60||Math.max(a[0],b[0])<BB[0]-60||Math.min(a[1],b[1])>BB[3]+60||Math.max(a[1],b[1])<BB[1]-60)continue;strip(a[0],a[1],b[0],b[1],7)}});
+ if(!nr)strip(BB[0]-40,front+6,BB[2]+40,front+6,7);
+ const fm=mat(0xa9a59a);for(let i=1;i<lot.length;i++){const a=lot[i],b=lot[(i+1)%lot.length],l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l<.1)continue;const f=mbox(l,1,.06,fm,(a[0]+b[0])/2,.5,(a[1]+b[1])/2,group);f.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0])}
+ if(res&&res.env&&res.env.length){const n=Math.min(res.env.length,4000),im=new THREE.InstancedMesh(new THREE.PlaneGeometry(STEP,STEP),new THREE.MeshBasicMaterial({color:0x1d9a78,transparent:true,opacity:.35,side:THREE.DoubleSide}),n),mm=new THREE.Matrix4(),rt=new THREE.Matrix4().makeRotationX(-Math.PI/2),tr=new THREE.Matrix4();
+  const stp=Math.max(1,Math.ceil(res.env.length/n));let k=0;for(let i=0;i<res.env.length&&k<n;i+=stp){tr.makeTranslation(res.env[i][0],.03,res.env[i][1]);mm.multiplyMatrices(tr,rt);im.setMatrixAt(k++,mm)}im.count=k;group.add(im)}
+ const hs=+$('hs').value;building(house,hs*WALL,Math.min(house.w,house.h)*.25,'gable',mat(0xd8d2c4),mat(0x5a4a42),group,'s',true);
+ obst.forEach(o=>mbox(o.w,2.8,o.h,mat(0xb7b2a6),o.x+o.w/2,1.4,o.y+o.h/2,group));
+ const o=opts[sel];
+ if(o&&lastV){const dm=dims(o,lastV.storeys,lastV.roof),df=doorFace(o);building(o,dm.wall,dm.rise,lastV.roof,mat(0x9fc3da),mat(0x2f5f86),group,df,true);
+  const gapL=house.x-BB[0],gapR=BB[2]-house.x-house.w,xs=gapL>=gapR?BB[0]+Math.max(.6,gapL/2):house.x+house.w+Math.max(.6,gapR/2);
+  const dx=df=='e'?o.x+o.w+.5:df=='w'?o.x-.5:o.x+o.w/2,dz=df=='s'?o.y+o.h+.5:df=='n'?o.y-.5:o.y+o.h/2,pm=mat(0xc9c2b2);
+  const seg=(x1,z1,x2,z2)=>{const l=Math.hypot(x2-x1,z2-z1);if(l<.1)return;const m=new THREE.Mesh(new THREE.PlaneGeometry(l,1),pm);m.rotation.x=-Math.PI/2;m.rotation.z=-Math.atan2(z2-z1,x2-x1);m.position.set((x1+x2)/2,.04,(z1+z2)/2);group.add(m)};
+  seg(xs,front,xs,dz);seg(xs,dz,dx,dz)}
+ setView(R3.cur||'orbit')}catch(e){const m=$('v3msg');m.style.display='flex';m.textContent='3D error: '+e.message}}
+function setView(k){if(!R3||lot.length<3)return;R3.cur=k;const cx=(BB[0]+BB[2])/2,cz=(BB[1]+BB[3])/2,m=Math.max(BB[2]-BB[0],BB[3]-BB[1],12),{cam,ctl}=R3;
+ if(k=='top')cam.position.set(cx,m*1.5,cz+.01);else if(k=='street')cam.position.set(cx,3,BB[3]+Math.max(18,m*.8));else cam.position.set(cx+m*.5,m*.6,BB[3]+m*.7);
+ ctl.target.set(cx,1,cz);ctl.update();document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v==k))}
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+/* ---------- map ---------- */
+let map,hl,optL,ovs=null;
+const zc2=c=>{c=(c||'').toUpperCase();return/^RA/.test(c)?'#d35400':/^RM/.test(c)?'#e67e22':/^R/.test(c)?'#f1c40f':/^C/.test(c)?'#e74c3c':/^E/.test(c)?'#8e44ad':/^(O|G)/.test(c)?'#27ae60':/^D/.test(c)?'#16a085':/^(I|U)/.test(c)?'#2980b9':'#7f8c8d'};
+function initMap(){if(!window.L){$('map').innerHTML='<p class="mut" style="padding:12px">Map library didn’t load. Check your connection and reload.</p>';return}
+ map=L.map('map').setView([43.589,-79.644],12);
+ const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'Imagery © Esri'}).addTo(map);
+ const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+ optL=L.layerGroup().addTo(map);hl=L.layerGroup().addTo(map);
+ const base={'Satellite':sat,'Street map':osm},ov={};
+ if(L.esri){ov['City parcels']=L.esri.featureLayer({url:PARC+'/0',style:()=>({color:'#ffd54a',weight:1,fillOpacity:0})});
+  ov['City zoning']=L.esri.featureLayer({url:ZONE+'/0',style:f=>({color:zc2(f.properties.ZONE_CODE),weight:1,fillColor:zc2(f.properties.ZONE_CODE),fillOpacity:.3}),onEachFeature:(f,l)=>l.bindTooltip(f.properties.ZONE_CODE||'',{sticky:true})})}
+ ovs=ov;L.control.layers(base,ov,{collapsed:false}).addTo(map);
+ map.on('click',e=>{lastAddr='';loadAt(e.latlng.lat,e.latlng.lng)})}
+function mapOverlay(){if(!map||!geo||!res)return;optL.clearLayers();const C=['#2980b9','#e67e22','#c0392b'];
+ const poly=(r,c,t)=>L.polygon([[r.x,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h],[r.x,r.y+r.h]].map(q=>Pi(fromPlan(q))),{color:c,weight:2,fillOpacity:.45}).bindTooltip(t).addTo(optL);
+ res.det.forEach((r,i)=>poly(r,C[i],'Detached ARU option '+(i+1)));res.att.forEach(r=>poly(r,'#8e44ad','Attached addition'))}
+/* ---------- data ---------- */
+function ft(u,o,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||15000);return fetch(u,Object.assign({},o,{signal:c.signal})).finally(()=>clearTimeout(t))}
+async function q(svc,id,lat,lon){const u=`${svc}/${id}/query?f=geojson&where=1%3D1&geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&returnGeometry=true`;const r=await ft(u);const nm=svc.split('/').slice(-2)[0];if(!r.ok)throw new Error(nm+' HTTP '+r.status);const j=await r.json();if(j.error)throw new Error(nm+': '+j.error.message);return j.features||[]}
+async function osmData(s,w,n,e){const d=`[out:json][timeout:10];(way["building"](${s},${w},${n},${e});way["highway"](${s},${w},${n},${e}););out geom;`;
+ try{return await Promise.any(['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'].map(async u=>{const r=await ft(u,{method:'POST',body:'data='+encodeURIComponent(d),headers:{'Content-Type':'application/x-www-form-urlencoded'}},8000);if(!r.ok)throw new Error('bad');return(await r.json()).elements||[]}))}catch(e){return null}}
+async function geocode(a){
+ const m=a.match(/^\s*(-?\d{1,2}\.\d+)\s*[, ]\s*(-?\d{2,3}\.\d+)\s*$/);if(m){lastAddr='';return[+m[1],+m[2]]}
+ if(!/mississauga/i.test(a))a+=', Mississauga, Ontario';let fail=0;
+ try{const r=await ft('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=1&countryCode=CAN&outSR=4326&location=-79.64,43.59&outFields=Match_addr&singleLine='+encodeURIComponent(a));
+  const j=await r.json(),c=j.candidates&&j.candidates[0];if(c&&c.score>=80){lastAddr=(c.address||'').split(',').slice(0,2).join(',');return[c.location.y,c.location.x]}}catch(e){fail++}
+ try{const r=await ft('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ca&q='+encodeURIComponent(a));
+  const j=await r.json();if(j[0]){lastAddr=(j[0].display_name||'').split(',').slice(0,2).join(',');return[+j[0].lat,+j[0].lon]}}catch(e){fail++}
+ if(fail>=2)throw new Error('both address finders were blocked');return null}
+function bigRing(g){const rs=g.type=='MultiPolygon'?g.coordinates.map(c=>c[0]):[g.coordinates[0]];rs.sort((a,b)=>area(b)-area(a));return rs[0]}
+function applyData(pf,zf,els){geo={f:pf,z:zf};const ll=bigRing(pf.geometry),cLat=ll.reduce((s,p)=>s+p[1],0)/ll.length,cLon=ll.reduce((s,p)=>s+p[0],0)/ll.length;
+ O={lat:cLat,lon:cLon,kx:111320*Math.cos(cLat*Math.PI/180),ky:110574};ring=clean(ll.map(([lo,la])=>P(la,lo)));bld=[];roads=[];
+ for(const e of els||[]){if(!e.geometry)continue;const pts=e.geometry.map(p=>P(p.lat,p.lon));if(e.tags&&e.tags.building)bld.push(pts);else if(e.tags&&e.tags.highway&&!/footway|path|cycleway|steps|pedestrian|track|service/.test(e.tags.highway))roads.push(pts)}
+ let best=0,bd=1e9;ring.forEach((a,i)=>{const b=ring[(i+1)%ring.length];if(Math.hypot(b[0]-a[0],b[1]-a[1])<3)return;const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];let d=1e9;roads.forEach(r=>{for(let k=0;k+1<r.length;k++)d=Math.min(d,dseg(m,r[k],r[k+1]))});if(d<bd){bd=d;best=i}});
+ setFront(best);prep();renderIntro();scene3d();optBar();drawPlan();$('out').innerHTML='<h2>ARU design</h2><p class="mut">Check the lot, then press “Design my ARU”.</p>'}
+async function loadAt(lat,lon){st('Loading City parcel and zoning records…');
+ try{let pf=await q(PARC,0,lat,lon);
+  if(!pf.length){st('No City of Mississauga parcel at that point. Is the address in Mississauga?');return}
+  const ll=bigRing(pf[0].geometry),cl=ll.reduce((s,p)=>s+p[1],0)/ll.length,co=ll.reduce((s,p)=>s+p[0],0)/ll.length;
+  let zf=[];try{zf=await q(ZONE,0,cl,co)}catch(e){}
+  try{const ps=await q(PSRCH,0,cl,co);if(ps[0])Object.assign(pf[0].properties,ps[0].properties)}catch(e){}
+  const xs=ll.map(p=>p[0]),ys=ll.map(p=>p[1]);st('Finding the house and street (OpenStreetMap)…');
+  const els=await osmData(Math.min(...ys)-.0004,Math.min(...xs)-.0004,Math.max(...ys)+.0004,Math.max(...xs)+.0004);
+  applyData(pf[0],zf[0]||null,els);
+  st(els===null?'Lot and zoning loaded. The building and street service was too slow, so the house is assumed. Drag it on the lot plan and use the street-edge arrows.':'Lot loaded. Check the street edge and house on the lot plan, then design the ARU.');
+  if(map){hl.clearLayers();optL.clearLayers();const g=L.geoJSON(pf[0],{style:{color:'#00e5ff',weight:3,fillOpacity:.1}}).addTo(hl);map.fitBounds(g.getBounds(),{maxZoom:19,padding:[30,30]});
+   if(ovs&&!map._ovAdded){map._ovAdded=1;Object.values(ovs).forEach(l=>l.addTo(map))}}
+ }catch(e){st('Could not reach a City data service ('+e.message+'). Check your connection, or use the manual rectangle.')}}
+$('go').onclick=async()=>{const a=$('addr').value.trim();if(!a)return;lastAddr='';
+ if(/^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/.test(a)){st('A postal code only lands near one lot. Enter a street address, or click your lot on the map.');}
+ else st('Finding address…');
+ try{const g=await geocode(a);if(!g){st('Address not found. Try adding the street type (St, Dr, Rd).');return}await loadAt(g[0],g[1])}catch(e){st('Address lookup failed ('+e.message+'). Click your lot on the map instead, or paste “43.59, -79.64” as lat, lon.')}};
+$('addr').addEventListener('keydown',e=>{if(e.key=='Enter')$('go').click()});
+$('bRun').onclick=run;
+$('bAuto').onclick=()=>{F.forEach(f=>{$('u_'+f[0]).checked=true});run()};
+$('fPrev').onclick=()=>{if(ring.length){setFront(frontI-1);prep();renderIntro();scene3d();optBar();drawPlan()}};
+$('fNext').onclick=()=>{if(ring.length){setFront(frontI+1);prep();renderIntro();scene3d();optBar();drawPlan()}};
+$('bRect').onclick=()=>{const W=+$('lw').value||15,D=+$('ld').value||35,[v]=V();geo=null;ring=[];bld=[];roads=[];roadsP=[];bP=[];obst=[];bArea=0;opts=[];lastV=null;res=null;lot=[[0,D],[W,D],[W,0],[0,0]];FR={phi:0,s:[0,0]};house={x:(W-v.hw)/2,y:D-6-v.hd,w:v.hw,h:v.hd};assumedHouse=true;lastAddr='Manual rectangle lot';prep();renderIntro();draw();scene3d();optBar();drawPlan();st('Manual rectangle lot (no City zoning data).')};
+['stor','roof','hs'].forEach(id=>$(id).addEventListener('change',()=>{if(lastV)run();else scene3d()}));
+addEventListener('error',e=>st('Script error: '+e.message));addEventListener('unhandledrejection',e=>st('Error: '+(e.reason&&e.reason.message||e.reason)));
+addEventListener('resize',()=>{draw();drawPlan()});
+initMap();init3d();drawPlan();
+</script></body></html>
